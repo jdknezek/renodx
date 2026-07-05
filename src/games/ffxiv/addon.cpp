@@ -81,8 +81,8 @@ renodx::utils::settings::Settings settings = {
         .label = "Tone Mapper",
         .section = "Tone Mapping",
         .tooltip = "Sets the tone mapper type",
-        .labels = {"Vanilla", "None", "DICE"},
-        .parse = [](float value) { return std::fmin(std::fmax(value, 0.f), 2.f); },
+        .labels = {"Vanilla", "None", "DICE", "Reno DRT"},
+        .parse = [](float value) { return std::fmin(std::fmax(value, 0.f), 3.f); },
     },
     new renodx::utils::settings::Setting{
         .key = "toneMapPeakNits",

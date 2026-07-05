@@ -66,14 +66,20 @@ void OnCopy(inout float3 color)
         color = renodx::color::grade::UserColorGrading(color, injectedData.colorGradeExposure, injectedData.colorGradeHighlights, injectedData.colorGradeShadows, injectedData.colorGradeContrast, injectedData.colorGradeSaturation, injectedData.colorGradeBlowout, 0.f);
       
         // tonemap
-        DICESettings config = DefaultDICESettings();
-        config.Type = 3;
-        config.ShoulderStart = injectedData.diceShoulderStart;
-      
-        float dicePaperWhite = injectedData.toneMapGameNits / 80.f;
-        float dicePeakWhite = injectedData.toneMapPeakNits / 80.f;
-        color.rgb = DICETonemap(color.rgb * dicePaperWhite, dicePeakWhite, config) / dicePaperWhite;
-        
+        if (injectedData.toneMapType == 3) {
+          renodx::tonemap::renodrt::Config config = renodx::tonemap::renodrt::config::Create();
+          config.nits_peak = (injectedData.toneMapPeakNits / injectedData.toneMapGameNits) * 100.f;
+          color.rgb = renodx::tonemap::renodrt::BT709(color.rgb, config);
+        } else {
+          DICESettings config = DefaultDICESettings();
+          config.Type = 3;
+          config.ShoulderStart = injectedData.diceShoulderStart;
+
+          float dicePaperWhite = injectedData.toneMapGameNits / 80.f;
+          float dicePeakWhite = injectedData.toneMapPeakNits / 80.f;
+          color.rgb = DICETonemap(color.rgb * dicePaperWhite, dicePeakWhite, config) / dicePaperWhite;
+        }
+
         color = renodx::color::correct::Hue(color, renodx::tonemap::uncharted2::BT709(untonemapped), injectedData.hueCorrectionStrength);
 
         color = extendGamut(color, injectedData.gamutExpansion);
