@@ -178,12 +178,34 @@ renodx::utils::settings::Settings settings = {
         .parse = [](float value) { return value * 0.02f; },
     },
     new renodx::utils::settings::Setting{
+        .key = "colorGradeHighlightSaturation",
+        .binding = &shader_injection.colorGradeHighlightSaturation,
+        .default_value = 50.f,
+        .label = "Highlight Saturation",
+        .section = "Color Grading",
+        .tooltip = "Adds or removes highlight color.",
+        .max = 100.f,
+        .is_enabled = []() { return shader_injection.toneMapType > 1; },
+        .parse = [](float value) { return value * 0.02f; },
+    },
+    new renodx::utils::settings::Setting{
         .key = "colorGradeBlowout",
         .binding = &shader_injection.colorGradeBlowout,
         .default_value = 55.f,
         .label = "Blowout",
         .section = "Color Grading",
         .tooltip = "Controls highlight desaturation due to overexposure.",
+        .max = 100.f,
+        .is_enabled = []() { return shader_injection.toneMapType > 1; },
+        .parse = [](float value) { return value * 0.01f; },
+    },
+    new renodx::utils::settings::Setting{
+        .key = "colorGradeFlare",
+        .binding = &shader_injection.colorGradeFlare,
+        .default_value = 0.f,
+        .label = "Flare",
+        .section = "Color Grading",
+        .tooltip = "Flare/Glare Compensation",
         .max = 100.f,
         .is_enabled = []() { return shader_injection.toneMapType > 1; },
         .parse = [](float value) { return value * 0.01f; },
@@ -298,7 +320,9 @@ void OnPresetOff() {
   renodx::utils::settings::UpdateSetting("colorGradeShadows", 50.f);
   renodx::utils::settings::UpdateSetting("colorGradeContrast", 50.f);
   renodx::utils::settings::UpdateSetting("colorGradeSaturation", 50.f);
+  renodx::utils::settings::UpdateSetting("colorGradeHighlightSaturation", 50.f);
   renodx::utils::settings::UpdateSetting("colorGradeBlowout", 0.f);
+  renodx::utils::settings::UpdateSetting("colorGradeFlare", 0.f);
   renodx::utils::settings::UpdateSetting("hueCorrectionStrength", 0.f);
   renodx::utils::settings::UpdateSetting("gamutExpansion", 0.f);
   renodx::utils::settings::UpdateSetting("blackFloorOffset", 0.f);

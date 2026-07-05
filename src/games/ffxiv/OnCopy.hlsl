@@ -63,7 +63,17 @@ void OnCopy(inout float3 color)
         float3 untonemapped = color;
 
         // color grading
-        color = renodx::color::grade::UserColorGrading(color, injectedData.colorGradeExposure, injectedData.colorGradeHighlights, injectedData.colorGradeShadows, injectedData.colorGradeContrast, injectedData.colorGradeSaturation, injectedData.colorGradeBlowout, 0.f);
+        renodx::color::grade::Config gradeConfig = renodx::color::grade::config::Create();
+        gradeConfig.exposure = injectedData.colorGradeExposure;
+        gradeConfig.highlights = injectedData.colorGradeHighlights;
+        gradeConfig.shadows = injectedData.colorGradeShadows;
+        gradeConfig.contrast = injectedData.colorGradeContrast;
+        gradeConfig.saturation = injectedData.colorGradeSaturation;
+        gradeConfig.dechroma = injectedData.colorGradeBlowout;
+        gradeConfig.flare = injectedData.colorGradeFlare;
+        gradeConfig.blowout = -1.f * (injectedData.colorGradeHighlightSaturation - 1.f);
+        gradeConfig.hue_correction_strength = 0.f;
+        color = renodx::color::grade::config::ApplyUserColorGrading(color, gradeConfig);
       
         // tonemap
         if (injectedData.toneMapType == 3) {
