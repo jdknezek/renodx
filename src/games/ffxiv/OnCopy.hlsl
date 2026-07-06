@@ -79,6 +79,9 @@ void OnCopy(inout float3 color)
         if (injectedData.toneMapType == 3) {
           renodx::tonemap::renodrt::Config config = renodx::tonemap::renodrt::config::Create();
           config.nits_peak = (injectedData.toneMapPeakNits / injectedData.toneMapGameNits) * 100.f;
+          // Disabled so highlight desaturation only comes from the color grading dechroma (Blowout),
+          // keeping this comparable to the DICE path, which has no equivalent post-tonemap dechroma.
+          config.dechroma = 0.f;
           color.rgb = renodx::tonemap::renodrt::BT709(color.rgb, config);
         } else {
           DICESettings config = DefaultDICESettings();
