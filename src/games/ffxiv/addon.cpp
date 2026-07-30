@@ -139,6 +139,45 @@ renodx::utils::settings::Settings settings = {
         .is_enabled = []() { return shader_injection.toneMapType == 4; },
     },
     new renodx::utils::settings::Setting{
+        .key = "psychoVGamutHueRestore",
+        .binding = &shader_injection.psychoVGamutHueRestore,
+        .default_value = 0.f,
+        .label = "PsychoV Gamut Hue Restore",
+        .section = "Tone Mapping",
+        .tooltip = "Restores the pre-gamut-compression hue direction in OKLab after PsychoV's gamut compression, preserving the compressed chroma radius and luminance.",
+        .max = 100.f,
+        .is_enabled = []() { return shader_injection.toneMapType == 4; },
+        .parse = [](float value) { return value * 0.01f; },
+    },
+    new renodx::utils::settings::Setting{
+        .key = "renoDRTToneMapMethod",
+        .binding = &shader_injection.renoDRTToneMapMethod,
+        .value_type = renodx::utils::settings::SettingValueType::INTEGER,
+        .default_value = 1.f,
+        .label = "Reno DRT Curve",
+        .section = "Tone Mapping",
+        .tooltip = "Selects the highlight rolloff curve used by the Reno DRT tonemapper.\nDaniele is the default and derives its rolloff from peak brightness alone.\nThe other curves roll off toward the White Clip value instead.",
+        .labels = {"None", "Daniele", "Reinhard", "Hermite Spline", "NeuTwo"},
+        .is_enabled = []() { return shader_injection.toneMapType == 3; },
+        // The shader enum starts at NONE = -1, so shift the zero-based slider index.
+        .parse = [](float value) { return value - 1.f; },
+    },
+    new renodx::utils::settings::Setting{
+        .key = "renoDRTWhiteClip",
+        .binding = &shader_injection.renoDRTWhiteClip,
+        .default_value = 4.f,
+        .label = "Reno DRT White Clip",
+        .section = "Tone Mapping",
+        .tooltip = "The scene brightness, as a multiple of 100% white, that maps to peak brightness.\nLower values clip sooner and hold more highlight contrast, higher values compress a wider range.\nUnused by the Daniele curve.",
+        .min = 1.f,
+        .max = 20.f,
+        .format = "%.2f",
+        .is_enabled = []() {
+          return shader_injection.toneMapType == 3
+                 && shader_injection.renoDRTToneMapMethod > 0.f;
+        },
+    },
+    new renodx::utils::settings::Setting{
         .key = "colorGradeExposure",
         .binding = &shader_injection.colorGradeExposure,
         .default_value = 1.f,
@@ -327,6 +366,9 @@ void OnPresetOff() {
   renodx::utils::settings::UpdateSetting("toneMapGameNits", 203.f);
   renodx::utils::settings::UpdateSetting("toneMapUINits", 203.f);
   renodx::utils::settings::UpdateSetting("psychoVCompression", 0.f);
+  renodx::utils::settings::UpdateSetting("psychoVGamutHueRestore", 0.f);
+  renodx::utils::settings::UpdateSetting("renoDRTToneMapMethod", 1.f);
+  renodx::utils::settings::UpdateSetting("renoDRTWhiteClip", 4.f);
   renodx::utils::settings::UpdateSetting("colorGradeExposure", 1.f);
   renodx::utils::settings::UpdateSetting("colorGradeHighlights", 50.f);
   renodx::utils::settings::UpdateSetting("colorGradeShadows", 50.f);

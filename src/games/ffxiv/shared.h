@@ -25,6 +25,9 @@ struct ShaderInjectData {
   float gamutExpansion;
   float diceShoulderStart;
   float psychoVCompression;
+  float psychoVGamutHueRestore;
+  float renoDRTToneMapMethod;
+  float renoDRTWhiteClip;
   float blackFloorOffset;
   float bloomRadiusMult;
   float vignetteStrength;

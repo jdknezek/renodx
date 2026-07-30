@@ -1,5 +1,6 @@
 #include "./shared.h"
 #include "./DICE.hlsl"
+#include "./psycho_test24.hlsli"
 
 // Restores the source color hue through Oklab (this works on colors beyond SDR in brightness and gamut too)
 float3 RestoreHue(float3 targetColor, float3 sourceColor, float amount = 0.5)
@@ -81,7 +82,7 @@ void OnCopy(inout float3 color)
       
         // tonemap
         if (isPsychoV) {
-          color.rgb = renodx::tonemap::psychov::psychotm_test22(
+          color.rgb = renodx_custom::tonemap::psycho24::psychotm_test24(
               color.rgb,
               injectedData.toneMapPeakNits / injectedData.toneMapGameNits,  // peak_value
               1.f,                                 // exposure (already applied above)
@@ -91,7 +92,7 @@ void OnCopy(inout float3 color)
               injectedData.colorGradeSaturation,   // purity_scale
               1.f,                                 // bleaching_intensity (reserved)
               100.f,                               // clip_point (reserved)
-              1.f,                                 // hue_restore
+              1.f,                                 // hue_restore (unused in test24)
               1.f,                                 // adaptation_contrast (deprecated)
               0,                                   // white_curve_mode (deprecated)
               1.f,                                 // cone_response_exponent
@@ -100,10 +101,15 @@ void OnCopy(inout float3 color)
               1.f,                                 // gamut_compression
               1,                                   // gamut compression mode: BT.2020
               1.f,                                 // adaptive_normalization (deprecated)
-              injectedData.psychoVCompression);    // curve-to-white pow, 0 = auto
+              injectedData.psychoVCompression,     // curve-to-white pow, 0 = auto
+              1.f,                                 // highlight_saturation (declared but unused in test24)
+              injectedData.psychoVGamutHueRestore);  // OKLab hue restore after gamut compression
         } else if (injectedData.toneMapType == 3) {
           renodx::tonemap::renodrt::Config config = renodx::tonemap::renodrt::config::Create();
           config.nits_peak = (injectedData.toneMapPeakNits / injectedData.toneMapGameNits) * 100.f;
+          config.tone_map_method = injectedData.renoDRTToneMapMethod;
+          // Only the non-Daniele curves read white_clip; Daniele ignores it entirely.
+          config.white_clip = injectedData.renoDRTWhiteClip;
           // Disabled so highlight desaturation only comes from the color grading dechroma (Blowout),
           // keeping this comparable to the DICE path, which has no equivalent post-tonemap dechroma.
           config.dechroma = 0.f;
