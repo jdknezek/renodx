@@ -62,13 +62,17 @@ void OnCopy(inout float3 color)
       if (injectedData.toneMapType > 1) {
         float3 untonemapped = color;
 
+        // PsychoV grades in its own LMS/MacLeod-Boynton domain, so the tone/purity
+        // controls are handed to the tonemapper instead of being pre-applied here.
+        bool isPsychoV = injectedData.toneMapType == 4;
+
         // color grading
         renodx::color::grade::Config gradeConfig = renodx::color::grade::config::Create();
         gradeConfig.exposure = injectedData.colorGradeExposure;
-        gradeConfig.highlights = injectedData.colorGradeHighlights;
-        gradeConfig.shadows = injectedData.colorGradeShadows;
-        gradeConfig.contrast = injectedData.colorGradeContrast;
-        gradeConfig.saturation = injectedData.colorGradeSaturation;
+        gradeConfig.highlights = isPsychoV ? 1.f : injectedData.colorGradeHighlights;
+        gradeConfig.shadows = isPsychoV ? 1.f : injectedData.colorGradeShadows;
+        gradeConfig.contrast = isPsychoV ? 1.f : injectedData.colorGradeContrast;
+        gradeConfig.saturation = isPsychoV ? 1.f : injectedData.colorGradeSaturation;
         gradeConfig.dechroma = injectedData.colorGradeBlowout;
         gradeConfig.flare = injectedData.colorGradeFlare;
         gradeConfig.blowout = -1.f * (injectedData.colorGradeHighlightSaturation - 1.f);
@@ -76,7 +80,28 @@ void OnCopy(inout float3 color)
         color = renodx::color::grade::config::ApplyUserColorGrading(color, gradeConfig);
       
         // tonemap
-        if (injectedData.toneMapType == 3) {
+        if (isPsychoV) {
+          color.rgb = renodx::tonemap::psychov::psychotm_test22(
+              color.rgb,
+              injectedData.toneMapPeakNits / injectedData.toneMapGameNits,  // peak_value
+              1.f,                                 // exposure (already applied above)
+              injectedData.colorGradeHighlights,   // highlights
+              injectedData.colorGradeShadows,      // shadows
+              injectedData.colorGradeContrast,     // contrast
+              injectedData.colorGradeSaturation,   // purity_scale
+              1.f,                                 // bleaching_intensity (reserved)
+              100.f,                               // clip_point (reserved)
+              1.f,                                 // hue_restore
+              1.f,                                 // adaptation_contrast (deprecated)
+              0,                                   // white_curve_mode (deprecated)
+              1.f,                                 // cone_response_exponent
+              0.18f.xxx,                           // anchor-in
+              0.18f.xxx,                           // anchor-out
+              1.f,                                 // gamut_compression
+              1,                                   // gamut compression mode: BT.2020
+              1.f,                                 // adaptive_normalization (deprecated)
+              injectedData.psychoVCompression);    // curve-to-white pow, 0 = auto
+        } else if (injectedData.toneMapType == 3) {
           renodx::tonemap::renodrt::Config config = renodx::tonemap::renodrt::config::Create();
           config.nits_peak = (injectedData.toneMapPeakNits / injectedData.toneMapGameNits) * 100.f;
           // Disabled so highlight desaturation only comes from the color grading dechroma (Blowout),

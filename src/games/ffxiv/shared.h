@@ -24,6 +24,7 @@ struct ShaderInjectData {
   float hueCorrectionStrength;
   float gamutExpansion;
   float diceShoulderStart;
+  float psychoVCompression;
   float blackFloorOffset;
   float bloomRadiusMult;
   float vignetteStrength;
