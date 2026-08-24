@@ -26,6 +26,7 @@ struct ShaderInjectData {
   float diceShoulderStart;
   float psychoVCompression;
   float psychoVGamutHueRestore;
+  float psychoV25Compression;
   float renoDRTToneMapMethod;
   float renoDRTWhiteClip;
   float blackFloorOffset;

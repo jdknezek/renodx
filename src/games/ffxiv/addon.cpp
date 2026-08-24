@@ -81,8 +81,8 @@ renodx::utils::settings::Settings settings = {
         .label = "Tone Mapper",
         .section = "Tone Mapping",
         .tooltip = "Sets the tone mapper type",
-        .labels = {"Vanilla", "None", "DICE", "Reno DRT", "PsychoV"},
-        .parse = [](float value) { return std::fmin(std::fmax(value, 0.f), 4.f); },
+        .labels = {"Vanilla", "None", "DICE", "Reno DRT", "PsychoV", "PsychoV25"},
+        .parse = [](float value) { return std::fmin(std::fmax(value, 0.f), 5.f); },
     },
     new renodx::utils::settings::Setting{
         .key = "toneMapPeakNits",
@@ -148,6 +148,17 @@ renodx::utils::settings::Settings settings = {
         .max = 100.f,
         .is_enabled = []() { return shader_injection.toneMapType == 4; },
         .parse = [](float value) { return value * 0.01f; },
+    },
+    new renodx::utils::settings::Setting{
+        .key = "psychoV25Compression",
+        .binding = &shader_injection.psychoV25Compression,
+        .default_value = 1.5f,
+        .label = "PsychoV25 Compression",
+        .section = "Tone Mapping",
+        .tooltip = "Curve-to-white compression exponent for the PsychoV25 tonemapper.\nLower values roll off gradually over a wider range, higher values keep more contrast and compress later.",
+        .max = 4.f,
+        .format = "%.2f",
+        .is_enabled = []() { return shader_injection.toneMapType == 5; },
     },
     new renodx::utils::settings::Setting{
         .key = "renoDRTToneMapMethod",
@@ -367,6 +378,7 @@ void OnPresetOff() {
   renodx::utils::settings::UpdateSetting("toneMapUINits", 203.f);
   renodx::utils::settings::UpdateSetting("psychoVCompression", 0.f);
   renodx::utils::settings::UpdateSetting("psychoVGamutHueRestore", 0.f);
+  renodx::utils::settings::UpdateSetting("psychoV25Compression", 1.5f);
   renodx::utils::settings::UpdateSetting("renoDRTToneMapMethod", 1.f);
   renodx::utils::settings::UpdateSetting("renoDRTWhiteClip", 4.f);
   renodx::utils::settings::UpdateSetting("colorGradeExposure", 1.f);

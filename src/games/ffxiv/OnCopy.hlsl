@@ -1,6 +1,7 @@
 #include "./shared.h"
 #include "./DICE.hlsl"
 #include "./psycho_test24.hlsli"
+#include "./customtest25.hlsli"
 
 // Restores the source color hue through Oklab (this works on colors beyond SDR in brightness and gamut too)
 float3 RestoreHue(float3 targetColor, float3 sourceColor, float amount = 0.5)
@@ -65,7 +66,9 @@ void OnCopy(inout float3 color)
 
         // PsychoV grades in its own LMS/MacLeod-Boynton domain, so the tone/purity
         // controls are handed to the tonemapper instead of being pre-applied here.
-        bool isPsychoV = injectedData.toneMapType == 4;
+        bool isPsychoV24 = injectedData.toneMapType == 4;
+        bool isPsychoV25 = injectedData.toneMapType == 5;
+        bool isPsychoV = isPsychoV24 || isPsychoV25;
 
         // color grading
         renodx::color::grade::Config gradeConfig = renodx::color::grade::config::Create();
@@ -81,7 +84,24 @@ void OnCopy(inout float3 color)
         color = renodx::color::grade::config::ApplyUserColorGrading(color, gradeConfig);
       
         // tonemap
-        if (isPsychoV) {
+        if (isPsychoV25) {
+          color.rgb = ApplyCustomPsychoV25ToneMap(
+              color.rgb,
+              injectedData.toneMapPeakNits / injectedData.toneMapGameNits,  // peak_value
+              injectedData.colorGradeHighlights,             // highlights
+              injectedData.colorGradeShadows,                // shadows
+              injectedData.colorGradeContrast,               // cone_response_exponent
+              injectedData.colorGradeFlare,                  // flare
+              injectedData.colorGradeSaturation,              // purity_scale
+              injectedData.colorGradeHighlightSaturation,     // highlight_saturation
+              injectedData.colorGradeBlowout,                 // dechroma
+              0.18f.xxx,                                     // current_adaptive_state_bt709
+              0.18f.xxx,                                     // current_background_state_bt709
+              0.5f,                                          // pre_shoulder_hue_linearity
+              0.35f,                                         // post_shoulder_source_hue_recovery_strength
+              injectedData.psychoV25Compression,              // compression
+              renodx::tonemap::psychov::PSYCHO25_TARGET_GAMUT_BT2020);  // target_gamut_mode
+        } else if (isPsychoV24) {
           color.rgb = renodx_custom::tonemap::psycho24::psychotm_test24(
               color.rgb,
               injectedData.toneMapPeakNits / injectedData.toneMapGameNits,  // peak_value
