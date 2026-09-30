@@ -1,7 +1,6 @@
 #include "./shared.h"
 #include "./DICE.hlsl"
-#include "./psycho_test24.hlsli"
-#include "./customtest25.hlsli"
+#include "./customtest31.hlsli"
 
 // Restores the source color hue through Oklab (this works on colors beyond SDR in brightness and gamut too)
 float3 RestoreHue(float3 targetColor, float3 sourceColor, float amount = 0.5)
@@ -66,9 +65,7 @@ void OnCopy(inout float3 color)
 
         // PsychoV grades in its own LMS/MacLeod-Boynton domain, so the tone/purity
         // controls are handed to the tonemapper instead of being pre-applied here.
-        bool isPsychoV24 = injectedData.toneMapType == 4;
-        bool isPsychoV25 = injectedData.toneMapType == 5;
-        bool isPsychoV = isPsychoV24 || isPsychoV25;
+        bool isPsychoV = injectedData.toneMapType == 4;
 
         // color grading
         renodx::color::grade::Config gradeConfig = renodx::color::grade::config::Create();
@@ -77,53 +74,33 @@ void OnCopy(inout float3 color)
         gradeConfig.shadows = isPsychoV ? 1.f : injectedData.colorGradeShadows;
         gradeConfig.contrast = isPsychoV ? 1.f : injectedData.colorGradeContrast;
         gradeConfig.saturation = isPsychoV ? 1.f : injectedData.colorGradeSaturation;
-        gradeConfig.dechroma = injectedData.colorGradeBlowout;
-        gradeConfig.flare = injectedData.colorGradeFlare;
-        gradeConfig.blowout = -1.f * (injectedData.colorGradeHighlightSaturation - 1.f);
+        gradeConfig.dechroma = isPsychoV ? 0.f : injectedData.colorGradeBlowout;
+        gradeConfig.flare = isPsychoV ? 0.f : injectedData.colorGradeFlare;
+        gradeConfig.blowout = isPsychoV ? 0.f : -1.f * (injectedData.colorGradeHighlightSaturation - 1.f);
         gradeConfig.hue_correction_strength = 0.f;
         color = renodx::color::grade::config::ApplyUserColorGrading(color, gradeConfig);
       
         // tonemap
-        if (isPsychoV25) {
-          color.rgb = ApplyCustomPsychoV25ToneMap(
+        if (isPsychoV) {
+          color.rgb = renodx::tonemap::psychov::custom_psychotm_test31(
               color.rgb,
               injectedData.toneMapPeakNits / injectedData.toneMapGameNits,  // peak_value
+              1.f,                                           // exposure (already applied above)
               injectedData.colorGradeHighlights,             // highlights
               injectedData.colorGradeShadows,                // shadows
-              injectedData.colorGradeContrast,               // cone_response_exponent
+              injectedData.colorGradeContrast,               // contrast
               injectedData.colorGradeFlare,                  // flare
-              injectedData.colorGradeSaturation,              // purity_scale
-              injectedData.colorGradeHighlightSaturation,     // highlight_saturation
-              injectedData.colorGradeBlowout,                 // dechroma
+              1.f,                                           // highlight_contrast
+              1.f,                                           // shadow_contrast
+              injectedData.colorGradeSaturation,             // purity_scale
+              injectedData.colorGradeHighlightSaturation,    // highlight_saturation
+              injectedData.colorGradeBlowout,                // dechroma
               0.18f.xxx,                                     // current_adaptive_state_bt709
               0.18f.xxx,                                     // current_background_state_bt709
-              0.5f,                                          // pre_shoulder_hue_linearity
-              0.35f,                                         // post_shoulder_source_hue_recovery_strength
-              injectedData.psychoV25Compression,              // compression
-              renodx::tonemap::psychov::PSYCHO25_TARGET_GAMUT_BT2020);  // target_gamut_mode
-        } else if (isPsychoV24) {
-          color.rgb = renodx_custom::tonemap::psycho24::psychotm_test24(
-              color.rgb,
-              injectedData.toneMapPeakNits / injectedData.toneMapGameNits,  // peak_value
-              1.f,                                 // exposure (already applied above)
-              injectedData.colorGradeHighlights,   // highlights
-              injectedData.colorGradeShadows,      // shadows
-              injectedData.colorGradeContrast,     // contrast
-              injectedData.colorGradeSaturation,   // purity_scale
-              1.f,                                 // bleaching_intensity (reserved)
-              100.f,                               // clip_point (reserved)
-              1.f,                                 // hue_restore (unused in test24)
-              1.f,                                 // adaptation_contrast (deprecated)
-              0,                                   // white_curve_mode (deprecated)
-              1.f,                                 // cone_response_exponent
-              0.18f.xxx,                           // anchor-in
-              0.18f.xxx,                           // anchor-out
-              1.f,                                 // gamut_compression
-              1,                                   // gamut compression mode: BT.2020
-              1.f,                                 // adaptive_normalization (deprecated)
-              injectedData.psychoVCompression,     // curve-to-white pow, 0 = auto
-              1.f,                                 // highlight_saturation (declared but unused in test24)
-              injectedData.psychoVGamutHueRestore);  // OKLab hue restore after gamut compression
+              0.f,                                           // sdr_eotf_emulation
+              1.f,                                           // gamut_compression
+              renodx::tonemap::psychov::CUSTOM_PSYCHO31_TARGET_GAMUT_BT2020,  // gamut_compression_mode
+              injectedData.psychoVCompression);              // compression
         } else if (injectedData.toneMapType == 3) {
           renodx::tonemap::renodrt::Config config = renodx::tonemap::renodrt::config::Create();
           config.nits_peak = (injectedData.toneMapPeakNits / injectedData.toneMapGameNits) * 100.f;
