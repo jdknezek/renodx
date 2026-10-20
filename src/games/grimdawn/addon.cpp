@@ -658,17 +658,17 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
       renodx::utils::random::binds.push_back(&shader_injection.swap_chain_output_dither_seed);
       renodx::utils::settings::on_preset_changed_callbacks.emplace_back(&HandleOutputModeChange); // SDR presets
 
+      // Deferred rendering creates its 5-target G-buffer as the first five b8g8r8a8 matches.
+      // It carries no HDR range and cloning it is linked to stutter, so only later matches are upgraded.
+      for (int32_t index = 5; index <= 9; ++index) {
         renodx::mods::swapchain::resource_upgrade_infos.push_back({
-          .old_format = reshade::api::format::b8g8r8a8_unorm,
-          .new_format = reshade::api::format::r16g16b16a16_float,
-          .use_resource_view_cloning = true,
-          
-          //.dimensions = {.width=renodx::utils::resource::ResourceUpgradeInfo::BACK_BUFFER, .height=renodx::utils::resource::ResourceUpgradeInfo::ANY},
-          //.aspect_ratio = -1,
-          .aspect_ratio_tolerance = 0.05f,
-          
-          //.use_resource_view_cloning_and_upgrade = true,
-      });
+            .old_format = reshade::api::format::b8g8r8a8_unorm,
+            .new_format = reshade::api::format::r16g16b16a16_float,
+            .index = index,
+            .use_resource_view_cloning = true,
+            .aspect_ratio_tolerance = 0.05f,
+        });
+      }
         renodx::mods::swapchain::resource_upgrade_infos.push_back({
           .old_format = reshade::api::format::r8g8b8a8_unorm,
           .new_format = reshade::api::format::r16g16b16a16_float,
