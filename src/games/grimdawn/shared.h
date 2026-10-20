@@ -22,6 +22,10 @@
 #define RENODX_TONE_MAP_FLARE                shader_injection.tone_map_flare
 #define RENODX_TONE_MAP_PER_CHANNEL          0.f
 
+#define CUSTOM_GAMUT_EXPANSION_TYPE          shader_injection.gamut_expansion_type
+#define CUSTOM_GAMUT_EXPANSION               shader_injection.gamut_expansion
+#define CUSTOM_GAMUT_EXPANSION_FALLOFF       shader_injection.gamut_expansion_falloff
+
 #define SCENE_GRADE_PER_CHANNEL_BLOWOUT      shader_injection.scene_grade_per_channel_blowout
 #define SCENE_GRADE_PER_CHANNEL_HUE_SHIFT    shader_injection.scene_grade_per_channel_hue_shift
 #define SCENE_GRADE_HUE_CLIP                 shader_injection.scene_grade_hue_clip
@@ -62,6 +66,9 @@ struct ShaderInjectData {
   float tone_map_highlight_saturation;
   float tone_map_blowout;
   float tone_map_flare;
+  float gamut_expansion_type;
+  float gamut_expansion;
+  float gamut_expansion_falloff;
 
   float scene_grade_per_channel_blowout;
   float scene_grade_per_channel_hue_shift;

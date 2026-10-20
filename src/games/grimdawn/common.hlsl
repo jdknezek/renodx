@@ -1,4 +1,5 @@
 #include "./shared.h"
+#include "./customtest31.hlsli"
 //#include "./lilium_rcas.hlsl"
 
 /// Applies Exponential Roll-Off tonemapping using the maximum channel.
@@ -233,14 +234,19 @@ float3 PreTonemapSliders(float3 untonemapped) {
   config.shadows = RENODX_TONE_MAP_SHADOWS;
   config.highlights = RENODX_TONE_MAP_HIGHLIGHTS;
 
-  float y = renodx::color::y::from::BT709(untonemapped);
-  float3 outputColor = ApplyExposureContrastFlareHighlightsShadowsByLuminance(untonemapped, y, config);
+  // PsychoV grades in its own LMS domain, so these sliders are passed to it in DisplayMap instead.
+  float3 outputColor = untonemapped;
+  if (RENODX_TONE_MAP_TYPE != 2.f) {
+    float y = renodx::color::y::from::BT709(untonemapped);
+    outputColor = ApplyExposureContrastFlareHighlightsShadowsByLuminance(untonemapped, y, config);
+  }
   outputColor = ApplyHDRBoost(outputColor, CUSTOM_HDR_BOOST, 1, 0.04f);
   //outputColor = ApplyPerChannelBlowoutHueShift(outputColor);
   return outputColor;
 }
 
 float3 PostTonemapSliders(float3 hdr_color) {
+  if (RENODX_TONE_MAP_TYPE == 2.f) return hdr_color;
   renodx::color::grade::Config config = renodx::color::grade::config::Create();
   config.saturation = RENODX_TONE_MAP_SATURATION;
   config.blowout = RENODX_TONE_MAP_HIGHLIGHT_SATURATION;
@@ -249,6 +255,45 @@ float3 PostTonemapSliders(float3 hdr_color) {
 
   float y = renodx::color::y::from::BT709(hdr_color);
   return ApplySaturationBlowoutHighlightSaturation(hdr_color, y, config);
+}
+
+float3 ApplyGamutExpansion(float3 color) {
+  if (CUSTOM_GAMUT_EXPANSION_TYPE == 0.f || CUSTOM_GAMUT_EXPANSION == 0.f || RENODX_SWAP_CHAIN_OUTPUT_PRESET == 0.f) return color;
+
+  float3 source_oklab = renodx::color::oklab::from::BT709(color);
+  float source_chroma = length(source_oklab.yz);
+  // Leaves near-black colors untouched so dark noise and banding are not saturated.
+  float lightness_weight = 1.f - exp(-4.f * source_oklab.x * source_oklab.x);
+
+  if (CUSTOM_GAMUT_EXPANSION_TYPE == 1.f) {  // OKLab Chroma (ffxiv)
+    float chroma_weight = 1.f - exp(-4.f * source_chroma);
+    float3 expanded_oklab = float3(source_oklab.x, source_oklab.yz * (1.f + chroma_weight * lightness_weight * CUSTOM_GAMUT_EXPANSION));
+    float3 expanded_ap1 = max(0, renodx::color::ap1::from::BT709(renodx::color::bt709::from::OkLab(expanded_oklab)));
+    return renodx::color::bt709::from::AP1(expanded_ap1);
+  }
+
+  // Boundary Mapped: reading the BT.709 values as BT.2020 primaries moves the BT.709 edge onto the
+  // BT.2020 edge. Only that target's chroma is used; source hue and luminance are kept.
+  float max_channel = renodx::math::Max(color);
+  if (max_channel <= 0.f) return color;
+  float bt709_saturation = saturate(1.f - renodx::math::Min(color) / max_channel);
+
+  float3 target_oklab = renodx::color::oklab::from::BT709(renodx::color::bt709::from::BT2020(color));
+  float chroma_scale = renodx::math::DivideSafe(length(target_oklab.yz), source_chroma, 1.f);
+  float3 target = renodx::color::bt709::from::OkLab(float3(source_oklab.x, source_oklab.yz * chroma_scale));
+  target = renodx::color::correct::Luminance(target, renodx::color::y::from::BT709(target), renodx::color::y::from::BT709(color));
+
+  // Caps the blend where the first BT.2020 channel reaches zero, so the result stays in gamut without clipping.
+  float3 source_bt2020 = renodx::color::bt2020::from::BT709(color);
+  float3 target_bt2020 = renodx::color::bt2020::from::BT709(target);
+  float3 channel_limit = renodx::math::Select(
+      target_bt2020 < 0.f,
+      renodx::math::DivideSafe(source_bt2020, source_bt2020 - target_bt2020, 1.f.xxx),
+      1.f.xxx);
+  float blend = CUSTOM_GAMUT_EXPANSION * pow(bt709_saturation, CUSTOM_GAMUT_EXPANSION_FALLOFF) * lightness_weight;
+  blend = min(blend, saturate(renodx::math::Min(channel_limit)));
+
+  return lerp(color, target, blend);
 }
 
 float3 DisplayMap(float3 color) {
@@ -260,11 +305,35 @@ float3 DisplayMap(float3 color) {
     tonemap_peak = peak_nits / diffuse_white_nits;
   }
 
-   color = max(0, renodx::color::bt2020::from::BT709(color));
-
    if (config.gamma_correction > 0.f) {
      tonemap_peak = renodx::color::correct::GammaSafe(tonemap_peak, config.gamma_correction > 0.f, abs(RENODX_GAMMA_CORRECTION) == 1.f ? 2.2f : 2.4f);
    }
+
+   if (RENODX_TONE_MAP_TYPE == 2.f) {
+     return renodx::tonemap::psychov::custom_psychotm_test31(
+         color,
+         tonemap_peak,                          // peak_value
+         RENODX_TONE_MAP_EXPOSURE,              // exposure
+         RENODX_TONE_MAP_HIGHLIGHTS,            // highlights
+         RENODX_TONE_MAP_SHADOWS,               // shadows
+         RENODX_TONE_MAP_CONTRAST,              // contrast
+         RENODX_TONE_MAP_FLARE,                 // flare
+         1.f,                                   // highlight_contrast
+         1.f,                                   // shadow_contrast
+         RENODX_TONE_MAP_SATURATION,            // purity_scale
+         RENODX_TONE_MAP_HIGHLIGHT_SATURATION,  // highlight_saturation
+         RENODX_TONE_MAP_BLOWOUT,               // dechroma
+         0.18f.xxx,                             // current_adaptive_state_bt709
+         0.18f.xxx,                             // current_background_state_bt709
+         0.f,                                   // sdr_eotf_emulation (handled by gamma correction above)
+         1.f,                                   // gamut_compression
+         RENODX_SWAP_CHAIN_OUTPUT_PRESET == 0.f
+             ? renodx::tonemap::psychov::CUSTOM_PSYCHO31_TARGET_GAMUT_BT709
+             : renodx::tonemap::psychov::CUSTOM_PSYCHO31_TARGET_GAMUT_BT2020,  // gamut_compression_mode
+         1.5f);                                 // compression
+   }
+
+   color = max(0, renodx::color::bt2020::from::BT709(color));
 
    float3 outputColor = color;
    if (RENODX_TONE_MAP_TYPE == 1.f) {
@@ -303,6 +372,7 @@ float3 CustomTonemap(float3 untonemapped, float2 TEXCOORD) {
   untonemapped = ApplyPerChannelBlowoutHueShiftHueClip(untonemapped, 0.75f);
   float3 tonemapped = DisplayMap(untonemapped);
   tonemapped = PostTonemapSliders(tonemapped);
+  tonemapped = ApplyGamutExpansion(tonemapped);
   tonemapped = ApplyRenoDXPostProcessing(tonemapped, TEXCOORD);
   return renodx::draw::RenderIntermediatePass(tonemapped);
 }

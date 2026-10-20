@@ -121,7 +121,7 @@ renodx::utils::settings::Settings settings = {
         .label = "Tone Mapper",
         .section = "Tone Mapping",
         .tooltip = "Sets the tone mapper type",
-        .labels = {"Vanilla", "RenoDX"},
+        .labels = {"Vanilla", "Neutwo", "PsychoV"},
         .parse = [](float value) { return value; },
         .is_visible = []() { return settings[0]->GetValue() >= 1; },
     },
@@ -421,6 +421,43 @@ new renodx::utils::settings::Setting{
         .parse = [](float value) { return value * 0.0001f; },
         .is_visible = []() { return settings[0]->GetValue() >= 1; },
     },
+    new renodx::utils::settings::Setting{
+        .key = "ColorGradeGamutExpansionType",
+        .binding = &CUSTOM_GAMUT_EXPANSION_TYPE,
+        .value_type = renodx::utils::settings::SettingValueType::INTEGER,
+        .default_value = 2.f,
+        .label = "Gamut Expansion Type",
+        .section = "Color Grading",
+        .tooltip = "OKLab Chroma: raises chroma of bright saturated colors evenly across hues.\nBoundary Mapped: moves colors near the BT.709 edge toward the BT.2020 edge, keeping hue and luminance.",
+        .labels = {"Off", "OKLab Chroma", "Boundary Mapped"},
+        .is_enabled = []() { return RENODX_TONE_MAP_TYPE > 0 && RENODX_SWAP_CHAIN_OUTPUT_PRESET != 0; },
+        .is_visible = []() { return settings[0]->GetValue() >= 1; },
+    },
+    new renodx::utils::settings::Setting{
+        .key = "ColorGradeGamutExpansion",
+        .binding = &CUSTOM_GAMUT_EXPANSION,
+        .default_value = 50.f,
+        .label = "Gamut Expansion",
+        .section = "Color Grading",
+        .tooltip = "Generates HDR colors (BT.2020) from bright saturated SDR (BT.709) ones.",
+        .max = 100.f,
+        .is_enabled = []() { return RENODX_TONE_MAP_TYPE > 0 && RENODX_SWAP_CHAIN_OUTPUT_PRESET != 0 && CUSTOM_GAMUT_EXPANSION_TYPE != 0; },
+        .parse = [](float value) { return value * 0.01f; },
+        .is_visible = []() { return settings[0]->GetValue() >= 1; },
+    },
+    new renodx::utils::settings::Setting{
+        .key = "ColorGradeGamutExpansionFalloff",
+        .binding = &CUSTOM_GAMUT_EXPANSION_FALLOFF,
+        .default_value = 2.f,
+        .label = "Gamut Expansion Falloff",
+        .section = "Color Grading",
+        .tooltip = "Higher values limit expansion to the most saturated colors and leave skin tones and pastels alone.",
+        .min = 1.f,
+        .max = 4.f,
+        .format = "%.2f",
+        .is_enabled = []() { return RENODX_TONE_MAP_TYPE > 0 && RENODX_SWAP_CHAIN_OUTPUT_PRESET != 0 && CUSTOM_GAMUT_EXPANSION_TYPE == 2; },
+        .is_visible = []() { return settings[0]->GetValue() >= 1; },
+    },
         new renodx::utils::settings::Setting{
         .key = "FxBloom",
         .binding = &shader_injection.custom_bloom,
@@ -541,6 +578,7 @@ void OnPresetOff() {
   renodx::utils::settings::UpdateSetting("ColorGradeHighlightSaturation", 50.f);
   renodx::utils::settings::UpdateSetting("ColorGradeBlowout", 0.f);
   renodx::utils::settings::UpdateSetting("ColorGradeFlare", 0.f);
+  renodx::utils::settings::UpdateSetting("ColorGradeGamutExpansionType", 0.f);
 
   renodx::utils::settings::UpdateSetting("FxBloom", 100.f);
   renodx::utils::settings::UpdateSetting("FxChromaticAberration", 100.f);
