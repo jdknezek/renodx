@@ -33,6 +33,7 @@ struct ShaderInjectData {
 
   int copyTracker;
   float swapChainOutputPreset;
+  float padding1;
 };
 
 #ifndef __cplusplus
